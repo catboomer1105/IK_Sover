@@ -10,6 +10,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/euler_angles.hpp>
 
 #include <vector>
 
@@ -66,7 +67,7 @@ class Chain
         }
     }
 
-    void Solve()
+    void FABRIK_Solve()
     {
         float current_distance = glm::length(target->position - origin);
 
@@ -101,18 +102,6 @@ class Chain
         SetCones();
     }
 
-    void SetCones()
-    {
-        vector<float> lengths;
-        vector<glm::quat> directions;
-        CalculateLinks(joints, lengths, directions);
-
-        for (int i = 0; i < lengths.size(); ++i)
-        {
-            cones[i].Set(joints[i], joints[i + 1], lengths[i], directions[i]);
-        }
-    }
-
     void Backward()
     {
         auto end = joints.end() - 1;
@@ -139,6 +128,62 @@ class Chain
         }
     }
 
+    void CCD_Solve()
+    {
+        glm::vec3 targetPosition = target->position;
+        int maxIterations = 100;
+
+        for (int iteration = 0; iteration < maxIterations; ++iteration)
+        {
+            for (int i = joints.size() - 2; i >= 0; --i)
+            {
+                glm::vec3 jointToTarget = targetPosition - joints[i];
+                glm::vec3 jointToEffector = joints[joints.size() - 1] - joints[i];
+
+                glm::vec3 rotationAxis = glm::cross(jointToEffector, jointToTarget);
+                float rotationAngle = angleBetween(jointToEffector, jointToTarget);
+
+                glm::quat rotation = glm::angleAxis(rotationAngle, rotationAxis);
+                glm::vec3 newEffectorPosition = joints[joints.size() - 1];
+
+                for (int j = i + 1; j < joints.size(); ++j)
+                {
+                    glm::vec3 jointToNewEffector = newEffectorPosition - joints[j];
+                    joints[j] = joints[j - 1] + glm::normalize(jointToNewEffector) * glm::length(jointToEffector);
+                }
+
+                joints[joints.size() - 1] = targetPosition;
+
+                if (glm::length(joints[joints.size() - 1] - targetPosition) < tolerance)
+                {
+                    SetCones();
+                    return;
+                }
+            }
+        }
+        SetCones();
+    }
+   
+   float angleBetween(const glm::vec3& v1, const glm::vec3& v2)
+{
+    float dotProduct = glm::dot(v1, v2);
+    float lengthsMultiplied = glm::length(v1) * glm::length(v2);
+    float cosineOfAngle = dotProduct / lengthsMultiplied;
+    return acos(cosineOfAngle);
+}
+
+    void SetCones()
+    {
+        vector<float> lengths;
+        vector<glm::quat> directions;
+        CalculateLinks(joints, lengths, directions);
+
+        for (int i = 0; i < lengths.size(); ++i)
+        {
+            cones[i].Set(joints[i], joints[i + 1], lengths[i], directions[i]);
+        }
+    }
+
     void Render(glm::mat4 view, glm::mat4 proj)
     {
         for (auto it = cones.begin(); it != cones.end(); ++it)
@@ -146,6 +191,7 @@ class Chain
             it->Render(view, proj);
         }
     }
+
 
     unsigned long size;
     float total_length;

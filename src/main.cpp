@@ -25,7 +25,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(-0.5f, 0.0f, 6.0f));
+Camera camera(glm::vec3(-0.5f, 0.0f, 7.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -59,7 +59,7 @@ int main()
     glfwSetScrollCallback(window, scroll_callback);
 
     // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -123,7 +123,8 @@ int main()
 
         endEffector1.Render(view, projection);
 
-        chain1.Solve();
+        //chain1.FABRIK_Solve();
+        chain1.CCD_Solve();
         chain1.Render(view, projection);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
